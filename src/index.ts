@@ -124,6 +124,7 @@ async function main(): Promise<void> {
   const protectKey = process.env.API_KEY;
   const app = express();
   app.use(express.json());
+
   if (protectKey) {
     app.use("/mcp", (req: Request, res: Response, next) => {
       if (req.headers.authorization !== `Bearer ${protectKey}`) {
@@ -133,7 +134,28 @@ async function main(): Promise<void> {
       next();
     });
   }
+
   app.get("/health", (_req: Request, res: Response) => res.json({ status: "ok" }));
+
+  app.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response) => {
+    res.json({
+      issuer: "https://grok-imagine-mcp-server-production.up.railway.app",
+      response_types_supported: [],
+      grant_types_supported: [],
+      token_endpoint: "",
+    });
+  });
+
+  app.get("/mcp", (_req: Request, res: Response) => {
+    res.json({
+      name: "grok-imagine-mcp-server",
+      version: "1.0.0",
+      protocol: "mcp",
+      transport: "streamable-http",
+      auth: "none",
+    });
+  });
+
   app.post("/mcp", async (req: Request, res: Response) => {
     const server = buildMcpServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -141,6 +163,7 @@ async function main(): Promise<void> {
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   });
+
   app.listen(port, () => process.stderr.write(`grok-imagine-mcp-server listening on port ${port}\n`));
 }
 
